@@ -36,11 +36,17 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	signatoryCommand := "spawn sudo /usr/local/bin/signatory-cli --config /etc/signatory.yaml import --vault nitro"
+	overrideCommand := os.Getenv("SIGNATORY_COMMAND")
+	if overrideCommand != "" {
+		signatoryCommand = overrideCommand
+	}
 	script := fmt.Sprintf(
-		`spawn sudo /usr/local/bin/signatory-cli --config /etc/signatory.yaml import --vault nitro; `+
+		`%s; `+
 			`expect "Enter the secret key:"; `+
 			`send -- "%s\r"; `+
 			`expect eof`,
+		signatoryCommand,
 		string(body),
 	)
 
