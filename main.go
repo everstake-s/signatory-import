@@ -14,6 +14,7 @@ var command = "spawn sudo /usr/local/bin/signatory-cli --config /etc/signatory.y
 
 func main() {
 	overrideCommand := flag.String("command", "", "command to execute")
+	flag.Parse()
 	if overrideCommand != nil && *overrideCommand != "" {
 		command = *overrideCommand
 	}
