@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -9,7 +10,14 @@ import (
 	"os/exec"
 )
 
+var command = "spawn sudo /usr/local/bin/signatory-cli --config /etc/signatory.yaml import --vault nitro"
+
 func main() {
+	overrideCommand := flag.String("command", "", "command to execute")
+	if overrideCommand != nil && *overrideCommand != "" {
+		command = *overrideCommand
+	}
+
 	http.HandleFunc("/", postHandler)
 
 	port := os.Getenv("PORT")
@@ -36,19 +44,22 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	signatoryCommand := "spawn sudo /usr/local/bin/signatory-cli --config /etc/signatory.yaml import --vault nitro"
-	overrideCommand := os.Getenv("SIGNATORY_COMMAND")
-	if overrideCommand != "" {
-		signatoryCommand = overrideCommand
-	}
 	script := fmt.Sprintf(
 		`%s; `+
 			`expect "Enter the secret key:"; `+
 			`send -- "%s\r"; `+
 			`expect eof`,
-		signatoryCommand,
+		command,
 		string(body),
 	)
+	scriptForLog := fmt.Sprintf(
+		`%s; `+
+			`expect "Enter the secret key:"; `+
+			`send -- <HIDDEN KEY>\r"; `+
+			`expect eof`,
+		command,
+	)
+	log.Printf("Executing command: %s", scriptForLog)
 
 	cmd := exec.Command("expect", "-c", script)
 	out, err := cmd.CombinedOutput()
@@ -58,7 +69,7 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Request handled: output: %s", string(out))
+	log.Printf("Request handled: output: %s", string(out))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
